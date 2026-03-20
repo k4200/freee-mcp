@@ -19,6 +19,7 @@ vi.mock('fs/promises');
 const mockFs = vi.mocked(fs);
 
 const originalXdgConfigHome = process.env.XDG_CONFIG_HOME;
+const originalConfigFilePath = process.env.CONFIG_FILE_PATH;
 
 describe('companies', () => {
   const validConfig: FullConfig = {
@@ -51,6 +52,11 @@ describe('companies', () => {
     } else {
       delete process.env.XDG_CONFIG_HOME;
     }
+    if (originalConfigFilePath !== undefined) {
+      process.env.CONFIG_FILE_PATH = originalConfigFilePath;
+    } else {
+      delete process.env.CONFIG_FILE_PATH;
+    }
     await cleanupTempDir();
   });
 
@@ -61,6 +67,17 @@ describe('companies', () => {
       const result = await loadFullConfig();
 
       expect(result).toEqual(validConfig);
+    });
+
+    it('should load config from CONFIG_FILE_PATH when set', async () => {
+      const customConfigPath = path.join(tempDir.getPath(), 'custom', 'config.json');
+      process.env.CONFIG_FILE_PATH = customConfigPath;
+      mockFs.readFile.mockResolvedValue(JSON.stringify(validConfig));
+
+      const result = await loadFullConfig();
+
+      expect(result).toEqual(validConfig);
+      expect(mockFs.readFile).toHaveBeenCalledWith(customConfigPath, 'utf8');
     });
 
     it('should create default config if file does not exist', async () => {
@@ -161,6 +178,25 @@ describe('companies', () => {
       expect(mockFs.mkdir).toHaveBeenCalled();
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         path.join(tempDir.getPath(), APP_NAME, 'config.json'),
+        JSON.stringify(validConfig, null, 2),
+        expect.any(Object)
+      );
+    });
+
+    it('should save config to CONFIG_FILE_PATH when set', async () => {
+      const customConfigPath = path.join(tempDir.getPath(), 'custom', 'config.json');
+      process.env.CONFIG_FILE_PATH = customConfigPath;
+      mockFs.mkdir.mockResolvedValue(undefined);
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      await saveFullConfig(validConfig);
+
+      expect(mockFs.mkdir).toHaveBeenCalledWith(
+        path.dirname(customConfigPath),
+        { recursive: true }
+      );
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        customConfigPath,
         JSON.stringify(validConfig, null, 2),
         expect.any(Object)
       );

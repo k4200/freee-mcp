@@ -12,7 +12,9 @@ export interface ConfigureOptions {
 }
 
 async function clearConfig(): Promise<void> {
-  const configPath = path.join(getConfigDir(), 'config.json');
+  const configPath = process.env.CONFIG_FILE_PATH
+    ? process.env.CONFIG_FILE_PATH
+    : path.join(getConfigDir(), 'config.json');
   try {
     await fs.unlink(configPath);
   } catch (error) {

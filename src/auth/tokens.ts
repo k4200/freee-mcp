@@ -35,7 +35,9 @@ export interface TokenData {
 }
 
 function getTokenFilePath(): string {
-  return path.join(getConfigDir(), 'tokens.json');
+  return process.env.TOKEN_FILE_PATH
+    ? process.env.TOKEN_FILE_PATH
+    : path.join(getConfigDir(), 'tokens.json');
 }
 
 export async function saveTokens(tokens: TokenData): Promise<void> {
