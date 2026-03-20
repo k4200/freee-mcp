@@ -39,6 +39,7 @@ global.fetch = mockFetch;
 
 // 元のXDG_CONFIG_HOMEを保存
 const originalXdgConfigHome = process.env.XDG_CONFIG_HOME;
+const originalTokenFilePath = process.env.TOKEN_FILE_PATH;
 
 describe('tokens', () => {
   const mockTokenData: TokenData = {
@@ -65,6 +66,11 @@ describe('tokens', () => {
       process.env.XDG_CONFIG_HOME = originalXdgConfigHome;
     } else {
       delete process.env.XDG_CONFIG_HOME;
+    }
+    if (originalTokenFilePath !== undefined) {
+      process.env.TOKEN_FILE_PATH = originalTokenFilePath;
+    } else {
+      delete process.env.TOKEN_FILE_PATH;
     }
     // テスト用一時ディレクトリをクリーンアップ
     await cleanupTempDir();
@@ -99,6 +105,25 @@ describe('tokens', () => {
 
       await expect(saveTokens(mockTokenData)).rejects.toThrow('Permission denied');
     });
+
+    it('should save tokens to TOKEN_FILE_PATH when set', async () => {
+      const customTokenPath = path.join(tempDir.getPath(), 'custom', 'tokens.json');
+      process.env.TOKEN_FILE_PATH = customTokenPath;
+      mockFs.mkdir.mockResolvedValue(undefined);
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      await saveTokens(mockTokenData);
+
+      expect(mockFs.mkdir).toHaveBeenCalledWith(
+        path.dirname(customTokenPath),
+        { recursive: true }
+      );
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        customTokenPath,
+        JSON.stringify(mockTokenData, null, 2),
+        { mode: CONFIG_FILE_PERMISSION }
+      );
+    });
   });
 
   describe('loadTokens', () => {
@@ -122,6 +147,17 @@ describe('tokens', () => {
       const result = await loadTokens();
 
       expect(result).toBeNull();
+    });
+
+    it('should load tokens from TOKEN_FILE_PATH when set', async () => {
+      const customTokenPath = path.join(tempDir.getPath(), 'custom', 'tokens.json');
+      process.env.TOKEN_FILE_PATH = customTokenPath;
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockTokenData));
+
+      const result = await loadTokens();
+
+      expect(result).toEqual(mockTokenData);
+      expect(mockFs.readFile).toHaveBeenCalledWith(customTokenPath, 'utf8');
     });
 
     it('should throw error for other file errors', async () => {
