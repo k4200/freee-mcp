@@ -58,7 +58,9 @@ interface LegacyCompaniesConfig {
 }
 
 function getConfigFilePath(): string {
-  return path.join(getConfigDir(), 'config.json');
+  return process.env.CONFIG_FILE_PATH
+    ? process.env.CONFIG_FILE_PATH
+    : path.join(getConfigDir(), 'config.json');
 }
 
 async function ensureConfigDir(): Promise<void> {
